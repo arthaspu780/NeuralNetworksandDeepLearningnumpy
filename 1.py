@@ -11,8 +11,7 @@ def sigmoid(z):
 def propagate(w, b, X, Y):
     m = X.shape[1]
     A = sigmoid((w).dot(X) + b)
-    cost = (np.sum(Y * np.log(A), axis=1, keepdims=True) + np.sum((1 - Y) * np.log(1 - A), axis=1, keepdims=True)) * (
-                -1 / m)
+    cost = (Y.dot((A.T))+(1-Y).dot(np.log((1-A).T)))*(1/m)
     dw = (1 / m) * ((X * (A - Y)).sum(axis=1, keepdims=True))
     db = np.float64((1 / m) * (np.sum((A - Y), axis=1, keepdims=True)))
     # YOUR CODE ENDS HERE
@@ -25,9 +24,9 @@ b=0.0
 train_set_x_orig, train_set_y, test_set_x_orig, test_set_y, classes = load_dataset()
 train_set_x_flatten =train_set_x_orig.reshape(train_set_x_orig.shape[0], -1).T
 test_set_x_flatten =test_set_x_orig.reshape(test_set_x_orig.shape[0], -1).T
-train_set_x = train_set_x_flatten / 1.
-test_set_x = test_set_x_flatten / 1.
-def optimize(w, b, X, Y, num_iterations=100000, learning_rate=0.009, print_cost=False):
+train_set_x = train_set_x_flatten / 255.
+test_set_x = test_set_x_flatten / 255.
+def optimize(w, b, X, Y, num_iterations=1000, learning_rate=0.009, print_cost=False):
     w = copy.deepcopy(w)
     b = copy.deepcopy(b)
 
