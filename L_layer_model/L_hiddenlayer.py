@@ -1,100 +1,83 @@
+import time
 import numpy as np
 import h5py
-from dnn_utils import sigmoid, sigmoid_backward, relu, relu_backward
+import matplotlib.pyplot as plt
+import scipy
+from dnn_app_utils_v3 import *
+from lr_utils import load_dataset
+train_set_x_orig, train_set_y, test_set_x_orig, test_set_y, classes = load_dataset()
+train_set_x_flatten =train_set_x_orig.reshape(train_set_x_orig.shape[0], -1).T
+test_set_x_flatten =test_set_x_orig.reshape(test_set_x_orig.shape[0], -1).T
+train_set_x = train_set_x_flatten / 255.
+test_set_x = test_set_x_flatten / 255.
+def L_layer_model(X, Y, layers_dims, learning_rate=0.0075, num_iterations=3000, print_cost=False):
+    """
+    Implements a L-layer neural network: [LINEAR->RELU]*(L-1)->LINEAR->SIGMOID.
 
+    Arguments:
+    X -- input data, of shape (n_x, number of examples)
+    Y -- true "label" vector (containing 1 if cat, 0 if non-cat), of shape (1, number of examples)
+    layers_dims -- list containing the input size and each layer size, of length (number of layers + 1).
+    learning_rate -- learning rate of the gradient descent update rule
+    num_iterations -- number of iterations of the optimization loop
+    print_cost -- if True, it prints the cost every 100 steps
 
-def initialize_parameters_deep(layer_dims):
-    np.random.seed(3)
-    parameters = {}
-    L = len(layer_dims)
+    Returns:
+    parameters -- parameters learnt by the model. They can then be used to predict.
+    """
 
-    for l in range(1, L):
-        parameters['W' + str(l)] = np.random.randn(layer_dims[l], layer_dims[l - 1]) * 0.01
-        parameters['b' + str(l)] = np.zeros((layer_dims[l], 1))
-        assert (parameters['W' + str(l)].shape == (layer_dims[l], layer_dims[l - 1]))
-        assert (parameters['b' + str(l)].shape == (layer_dims[l], 1))
-    return parameters
+    np.random.seed(1)
+    costs = []  # keep track of cost
 
+    # Parameters initialization.
+    # (≈ 1 line of code)
+    # parameters = ...
+    # YOUR CODE STARTS HERE
+    parameters = initialize_parameters_deep(layers_dims)
 
-def linear_forward(A, W, b):
-    Z = W.dot(A) + b
-    cache = (A, W, b)
-    return Z, cache
+    # YOUR CODE ENDS HERE
 
+    # Loop (gradient descent)
+    for i in range(0, num_iterations):
 
-def linear_activation_forward(A_prev, W, b, activation):
-    if activation == "sigmoid":
-        Z, linear_cache = linear_forward(A_prev, W, b)
-        A, activation_cache = sigmoid(Z)
-    elif activation == "relu":
-        Z, linear_cache = linear_forward(A_prev, W, b)
-        A, activation_cache = relu(Z)
-    cache = (linear_cache, activation_cache)
-    return A, cache
+        # Forward propagation: [LINEAR -> RELU]*(L-1) -> LINEAR -> SIGMOID.
+        # (≈ 1 line of code)
+        # AL, caches = ...
+        # YOUR CODE STARTS HERE
+        AL, caches = L_model_forward(X, parameters)
 
+        # YOUR CODE ENDS HERE
 
-def L_model_forward(X, parameters):
-    caches = []
-    A = X
-    L = len(parameters) // 2
-    for l in range(1, L):
-        A_prev = A
-        A, cache = linear_activation_forward(A_prev, parameters['W' + str(l)], parameters['b' + str(l)], "relu")
-        caches.append(cache)
-    AL, cache = linear_activation_forward(A, parameters['W' + str(L)], parameters['b' + str(L)], "sigmoid")
-    caches.append(cache)
-    return AL, caches
+        # Compute cost.
+        # (≈ 1 line of code)
+        # cost = ...
+        # YOUR CODE STARTS HERE
+        cost = compute_cost(AL, Y)
 
+        # YOUR CODE ENDS HERE
 
-def compute_cost(AL, Y):
-    m = Y.shape[1]
-    cost = (np.sum(Y * np.log(AL), axis=1, keepdims=True) + np.sum((1 - Y) * np.log(1 - AL), axis=1, keepdims=True)) / (
-        -m)
-    cost = np.squeeze(cost)
-    return cost
+        # Backward propagation.
+        # (≈ 1 line of code)
+        # grads = ...
+        # YOUR CODE STARTS HERE
+        grads = L_model_backward(AL, Y, caches)
 
+        # YOUR CODE ENDS HERE
 
-def linear_backward(dZ, cache):
-    A_prev, W, b = cache
-    m = A_prev.shape[1]
-    dW = dZ.dot(A_prev.T) * (1 / m)
-    db = np.sum(dZ, axis=1, keepdims=True) * (1 / m)
-    dA_prev = (W.T).dot(dZ)
-    return dA_prev, dW, db
+        # Update parameters.
+        # (≈ 1 line of code)
+        # parameters = ...
+        # YOUR CODE STARTS HERE
+        parameters = update_parameters(parameters, grads, learning_rate)
 
+        # YOUR CODE ENDS HERE
 
-def linear_activation_backward(dA, cache, activation):
-    linear_cache, activation_cache = cache
-    if activation == "relu":
-        dZ = relu_backward(dA, activation_cache)
-        dA_prev, dW, db = linear_backward(dZ, linear_cache)
-    elif activation == "sigmoid":
-        dZ = sigmoid_backward(dA, activation_cache)
-        dA_prev, dW, db = linear_backward(dZ, linear_cache)
-    return dA_prev, dW, db
+        # Print the cost every 100 iterations
+        if print_cost and i % 100 == 0 or i == num_iterations - 1:
+            print("Cost after iteration {}: {}".format(i, np.squeeze(cost)))
+        if i % 100 == 0 or i == num_iterations:
+            costs.append(cost)
 
-
-def L_model_backward(AL, Y, caches):
-    grads = {}
-    L = len(caches)
-    m = AL.shape[1]
-    Y = Y.reshape(AL.shape)
-    dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
-    current_cache = caches[L - 1]
-    dA_prev_temp, dW_temp, db_temp = linear_activation_backward(dAL, current_cache, "sigmoid")
-    grads["dA" + str(L - 1)] = dA_prev_temp
-    grads["dW" + str(L)] = dW_temp
-    grads["db" + str(L)] = db_temp
-    for l in reversed(range(L - 1)):
-        current_cache = caches[l]
-        dA_prev_temp, dW_temp, db_temp = linear_activation_backward(dA_prev_temp, current_cache, "relu")
-        grads["dA" + str(l)] = dA_prev_temp
-        grads["dW" + str(l + 1)] = dW_temp
-        grads["db" + str(l + 1)] = db_temp
-    return grads
-def update_parameters(params, grads, learning_rate):
-    parameters = params.copy()
-    L = len(parameters) // 2
-    for l in range(L):
-        parameters["W" + str(l + 1)] = parameters["W" + str(l + 1)] - (grads["dW" + str(l + 1)]).T * learning_rate
-        parameters["b" + str(l + 1)] = parameters["b" + str(l + 1)] - (grads["db" + str(l + 1)]).T * learning_rate
+    return parameters, costs
+layers_dims = [12288, 20, 7, 5, 1]#改这里可以改变模型结构
+parameters, costs = L_layer_model(train_set_x, train_set_y, layers_dims, num_iterations = 2500, print_cost = True)
